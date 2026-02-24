@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspaces/req-hunter:cached
+      - req-hunter-bashhistory:/commandhistory
+    command: sleep infinity
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - path: ../.env
+        required: false
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - req-hunter-net
+
+  db:
+    image: postgres:16-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: req_hunter
+      POSTGRES_USER: req_hunter
+      POSTGRES_PASSWORD: req_hunter_password
+    volumes:
+      - req-hunter-pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U req_hunter -d req_hunter"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - req-hunter-net
+
+volumes:
+  req-hunter-pgdata:
+  req-hunter-bashhistory:
+
+networks:
+  req-hunter-net:
+    driver: bridge

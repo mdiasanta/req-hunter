@@ -1,0 +1,58 @@
+{
+  "name": "req-hunter",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/req-hunter",
+
+  "forwardPorts": [8000, 5432],
+  "portsAttributes": {
+    "8000": {
+      "label": "FastAPI",
+      "onAutoForward": "notify"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "onAutoForward": "silent"
+    }
+  },
+
+  "postCreateCommand": "pip install -e '.[dev]' && playwright install --with-deps chromium",
+
+  "runServices": ["app", "db"],
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg",
+        "ms-python.debugpy"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "editor.formatOnSave": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
+          }
+        },
+        "ruff.lint.enable": true,
+        "sqltools.connections": [
+          {
+            "name": "req-hunter-local",
+            "driver": "PostgreSQL",
+            "server": "db",
+            "port": 5432,
+            "database": "req_hunter",
+            "username": "req_hunter",
+            "password": "req_hunter_password"
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,45 @@
+"""SQLAlchemy ORM models for req-hunter."""
+
+import enum
+from datetime import datetime
+
+from sqlalchemy import DateTime, Enum, String, Text, func
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.database import Base
+
+
+class JobStatus(str, enum.Enum):
+    NEW = "new"
+    SEEN = "seen"
+    APPLIED = "applied"
+    REJECTED = "rejected"
+    IGNORED = "ignored"
+
+
+class Job(Base):
+    """Represents a single job listing scraped from an external source."""
+
+    __tablename__ = "jobs"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    company: Mapped[str] = mapped_column(String(256), nullable=False)
+    location: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    url: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[JobStatus] = mapped_column(
+        Enum(JobStatus), default=JobStatus.NEW, nullable=False
+    )
+    scraped_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
