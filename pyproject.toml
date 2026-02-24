@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=72.0", "setuptools-scm>=8.0"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "req-hunter"
@@ -42,7 +42,6 @@ dev = [
 
     # Type checking
     "mypy>=1.14.0,<2.0.0",
-    "types-python-dotenv>=1.0.0",
 
     # Alembic sync migrations driver
     "psycopg2-binary>=2.9.0,<3.0.0",
