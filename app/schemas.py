@@ -7,6 +7,54 @@ from pydantic import BaseModel, HttpUrl
 from app.models import JobStatus
 
 
+# ── Source schemas ─────────────────────────────────────────────────────────────
+
+class SourceBase(BaseModel):
+    name: str
+    base_url: str
+    keyword: str
+    query_param: str = "q"
+
+
+class SourceCreate(SourceBase):
+    """Schema for creating a new scrape source."""
+
+
+class SourceUpdate(BaseModel):
+    """Schema for partially updating a source."""
+
+    name: str | None = None
+    base_url: str | None = None
+    keyword: str | None = None
+    query_param: str | None = None
+    is_active: bool | None = None
+
+
+class SourceRead(SourceBase):
+    """Schema returned by source API endpoints."""
+
+    id: int
+    is_active: bool
+    last_scraped_at: datetime | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class SourceListResponse(BaseModel):
+    total: int
+    items: list[SourceRead]
+
+
+# ── Scrape result schema ───────────────────────────────────────────────────────
+
+class ScrapeResult(BaseModel):
+    sources_processed: int
+    jobs_found: int
+    jobs_new: int
+    errors: list[str] = []
+
+
 class JobBase(BaseModel):
     title: str
     company: str

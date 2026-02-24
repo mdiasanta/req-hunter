@@ -4,7 +4,7 @@ A Python-based job listing scraper for tracking and aggregating open roles acros
 
 ## Stack
 
-- **Scraper** — [Playwright](https://playwright.dev/python/) (Chromium, headless)
+- **Scraper** — [Playwright](https://playwright.dev/python/) (Chromium, headless) + [httpx](https://www.python-httpx.org/) for Workday ATS
 - **API** — [FastAPI](https://fastapi.tiangolo.com/) + [Uvicorn](https://www.uvicorn.org/)
 - **Database** — PostgreSQL 16 via async [SQLAlchemy](https://docs.sqlalchemy.org/) + [asyncpg](https://github.com/MagicStack/asyncpg)
 - **Migrations** — [Alembic](https://alembic.sqlalchemy.org/)
@@ -31,30 +31,139 @@ Once inside the container terminal:
 # Copy the example env file (edit SECRET_KEY at minimum)
 cp .env.example .env
 
-# Generate and apply the initial DB migration
-alembic revision --autogenerate -m "create jobs table"
+# Apply the initial DB migration
+export $(grep -v '^#' .env | xargs)
 alembic upgrade head
 
 # Start the API server with hot reload
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-The API will be available at `http://localhost:8000`.
+The API will be available at `http://localhost:8000` and interactive docs at `http://localhost:8000/docs`.
 
-## API
+---
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/health` | GET | Liveness check |
-| `/api/v1/jobs/` | GET | List jobs (supports `?status=`, `?limit=`, `?offset=`) |
-| `/api/v1/jobs/{id}` | GET | Get a single job by ID |
-| `/api/v1/jobs/{id}` | PATCH | Update a job's status |
-| `/docs` | GET | Swagger UI |
-| `/redoc` | GET | ReDoc |
+## How to use
+
+### 1. Add a source
+
+A source is a website you want to scrape and the keyword to search for (e.g. a job title).
+
+```bash
+curl -X POST http://localhost:8000/api/v1/sources/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Acme Corp",
+    "base_url": "https://acme.wd5.myworkdayjobs.com/en-US/External",
+    "keyword": "software engineer"
+  }'
+```
+
+For non-Workday job boards you can also specify which query parameter the site uses for search (defaults to `q`):
+
+```bash
+curl -X POST http://localhost:8000/api/v1/sources/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Example Corp",
+    "base_url": "https://example.com/careers",
+    "keyword": "data engineer",
+    "query_param": "search"
+  }'
+```
+
+**Workday sites** (`myworkdayjobs.com`) are detected automatically and scraped via Workday's internal API — no browser needed, and full pagination is supported. All other sites are scraped with a headless Chromium browser.
+
+### 2. Run a scrape
+
+Scrape all active sources at once:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/scrape/run
+```
+
+Or scrape a single source by its ID:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/scrape/run/1
+```
+
+The response tells you how many jobs were found and how many were new:
+
+```json
+{
+  "sources_processed": 2,
+  "jobs_found": 34,
+  "jobs_new": 5,
+  "errors": []
+}
+```
+
+Jobs are deduplicated by URL — re-running a scrape won't reset statuses you've already set.
+
+### 3. Browse results
+
+```bash
+# All new jobs
+curl "http://localhost:8000/api/v1/jobs/?status=new"
+
+# With pagination
+curl "http://localhost:8000/api/v1/jobs/?limit=20&offset=0"
+```
+
+### 4. Update a job's status
+
+```bash
+curl -X PATCH http://localhost:8000/api/v1/jobs/42 \
+  -H "Content-Type: application/json" \
+  -d '{"status": "applied"}'
+```
 
 ### Job statuses
 
 `new` → `seen` → `applied` / `rejected` / `ignored`
+
+### Managing sources
+
+```bash
+# List all sources
+curl http://localhost:8000/api/v1/sources/
+
+# Pause a source (stop it from being scraped)
+curl -X PATCH http://localhost:8000/api/v1/sources/1 \
+  -H "Content-Type: application/json" \
+  -d '{"is_active": false}'
+
+# Update the keyword
+curl -X PATCH http://localhost:8000/api/v1/sources/1 \
+  -H "Content-Type: application/json" \
+  -d '{"keyword": "senior software engineer"}'
+
+# Delete a source
+curl -X DELETE http://localhost:8000/api/v1/sources/1
+```
+
+---
+
+## API reference
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/health` | GET | Liveness check |
+| `/api/v1/sources/` | GET | List all sources |
+| `/api/v1/sources/` | POST | Add a new source |
+| `/api/v1/sources/{id}` | GET | Get a source by ID |
+| `/api/v1/sources/{id}` | PATCH | Update a source |
+| `/api/v1/sources/{id}` | DELETE | Delete a source |
+| `/api/v1/scrape/run` | POST | Scrape all active sources |
+| `/api/v1/scrape/run/{id}` | POST | Scrape one source by ID |
+| `/api/v1/jobs/` | GET | List jobs (`?status=`, `?limit=`, `?offset=`) |
+| `/api/v1/jobs/{id}` | GET | Get a job by ID |
+| `/api/v1/jobs/{id}` | PATCH | Update a job's status |
+| `/docs` | GET | Swagger UI |
+| `/redoc` | GET | ReDoc |
+
+---
 
 ## Project structure
 
@@ -63,38 +172,48 @@ app/
 ├── main.py           # FastAPI app factory
 ├── config.py         # Settings loaded from .env
 ├── database.py       # Async SQLAlchemy engine and session
-├── models.py         # Job ORM model
+├── models.py         # Job and Source ORM models
 ├── schemas.py        # Pydantic request/response schemas
 ├── routers/
-│   └── jobs.py       # Job listing endpoints
+│   ├── jobs.py       # Job listing endpoints
+│   ├── sources.py    # Source management endpoints
+│   └── scrape.py     # Scrape trigger endpoints
 └── scraper/
-    └── base.py       # Abstract BaseScraper (extend this to add sources)
+    ├── base.py       # Abstract BaseScraper (Playwright)
+    ├── generic.py    # Heuristic scraper for arbitrary job boards
+    ├── workday.py    # Workday ATS API scraper
+    └── runner.py     # Dispatcher — routes sources to the right scraper
 alembic/              # Database migrations
 .devcontainer/        # VS Code dev container config
 ```
 
-## Adding a scraper
+## Adding a custom scraper
 
-Subclass `BaseScraper` in `app/scraper/` and implement the `scrape()` method:
+For sites where the generic heuristic doesn't work well, subclass `BaseScraper` and implement `scrape()`:
 
 ```python
 from app.scraper.base import BaseScraper
 from app.schemas import JobCreate
 
-class ExampleScraper(BaseScraper):
-    source = "example"
+class AcmeScraper(BaseScraper):
+    source = "acme"
 
     async def scrape(self) -> list[JobCreate]:
-        await self.polite_goto("https://example.com/jobs")
-        # parse self.page and return a list of JobCreate
+        await self.polite_goto("https://acme.com/jobs?q=engineer")
+        # use self.page (Playwright Page) to extract listings
         return []
 ```
+
+Then register it in `app/scraper/runner.py`'s `_build_scraper()` function.
 
 `polite_goto()` adds a configurable delay between requests (`SCRAPER_DELAY_SECONDS` in `.env`).
 
 ## Database migrations
 
 ```bash
+# Alembic requires env vars to be exported in the shell
+export $(grep -v '^#' .env | xargs)
+
 # After changing models.py, generate a new migration
 alembic revision --autogenerate -m "description of change"
 
@@ -115,4 +234,5 @@ See [.env.example](.env.example) for all available options. Key variables:
 | `DATABASE_SYNC_URL` | — | Sync PostgreSQL URL (used by Alembic) |
 | `APP_ENV` | `development` | Environment name |
 | `PLAYWRIGHT_HEADLESS` | `true` | Run browser headlessly |
-| `SCRAPER_DELAY_SECONDS` | `2` | Delay between scraper requests |
+| `SCRAPER_DELAY_SECONDS` | `2` | Delay between requests / pagination |
+| `SCRAPER_TIMEOUT_SECONDS` | `30` | Per-request timeout |
