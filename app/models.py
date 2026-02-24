@@ -55,6 +55,7 @@ class Source(Base):
     base_url: Mapped[str] = mapped_column(Text, nullable=False)
     keyword: Mapped[str] = mapped_column(String(256), nullable=False)
     query_param: Mapped[str] = mapped_column(String(64), default="q", nullable=False)
+    url_path_filter: Mapped[str | None] = mapped_column(String(256), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     last_scraped_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

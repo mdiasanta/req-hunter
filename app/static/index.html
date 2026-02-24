@@ -354,6 +354,10 @@
           <label>Query Param</label>
           <input id="f-param" class="w-sm" type="text" value="q" placeholder="q">
         </div>
+        <div class="fg">
+          <label>URL Path Filter</label>
+          <input id="f-path-filter" class="w-md" type="text" placeholder="/job/ (optional)">
+        </div>
         <button class="btn" id="add-btn">Add</button>
       </div>
     </div>
@@ -520,7 +524,10 @@
       <tr data-sid="${s.id}">
         <td><strong>${esc(s.name)}</strong></td>
         <td class="muted small">${esc(s.keyword)}</td>
-        <td class="small"><a class="url-cell muted" href="${esc(s.base_url)}" target="_blank" title="${esc(s.base_url)}">${esc(s.base_url)}</a></td>
+        <td class="small">
+          <a class="url-cell muted" href="${esc(s.base_url)}" target="_blank" title="${esc(s.base_url)}">${esc(s.base_url)}</a>
+          ${s.url_path_filter ? `<span class="muted" style="font-size:11px">filter: ${esc(s.url_path_filter)}</span>` : ''}
+        </td>
         <td class="muted small">${fmtDate(s.last_scraped_at)}</td>
         <td>
           <label class="toggle">
@@ -588,19 +595,20 @@
 
   // Add source form
   document.getElementById('add-btn').addEventListener('click', async () => {
-    const name        = document.getElementById('f-name').value.trim();
-    const base_url    = document.getElementById('f-url').value.trim();
-    const keyword     = document.getElementById('f-keyword').value.trim();
-    const query_param = document.getElementById('f-param').value.trim() || 'q';
+    const name            = document.getElementById('f-name').value.trim();
+    const base_url        = document.getElementById('f-url').value.trim();
+    const keyword         = document.getElementById('f-keyword').value.trim();
+    const query_param     = document.getElementById('f-param').value.trim() || 'q';
+    const url_path_filter = document.getElementById('f-path-filter').value.trim() || null;
 
     if (!name || !base_url || !keyword) {
       toast('Name, URL, and keyword are required', 'err');
       return;
     }
     try {
-      await api('/sources/', { method: 'POST', body: JSON.stringify({ name, base_url, keyword, query_param }) });
+      await api('/sources/', { method: 'POST', body: JSON.stringify({ name, base_url, keyword, query_param, url_path_filter }) });
       toast('Source added', 'ok');
-      ['f-name','f-url','f-keyword'].forEach(id => document.getElementById(id).value = '');
+      ['f-name','f-url','f-keyword','f-path-filter'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('f-param').value = 'q';
       loadSources();
     } catch (err) {

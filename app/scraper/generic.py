@@ -46,6 +46,7 @@ class GenericScraper(BaseScraper):
         base_url: str,
         keyword: str,
         query_param: str = "q",
+        url_path_filter: str | None = None,
     ) -> None:
         super().__init__()
         self.source = source_name
@@ -53,14 +54,16 @@ class GenericScraper(BaseScraper):
         self._base_url = base_url
         self._keyword = keyword
         self._query_param = query_param
+        self._url_path_filter = url_path_filter.lower() if url_path_filter else None
 
     def _build_url(self) -> str:
         sep = "&" if "?" in self._base_url else "?"
         return f"{self._base_url}{sep}{self._query_param}={quote_plus(self._keyword)}"
 
-    @staticmethod
-    def _looks_like_job_url(href: str) -> bool:
+    def _looks_like_job_url(self, href: str) -> bool:
         href_lower = href.lower()
+        if self._url_path_filter:
+            return self._url_path_filter in href_lower
         return any(frag in href_lower for frag in _JOB_URL_FRAGMENTS)
 
     async def scrape(self) -> list[JobCreate]:

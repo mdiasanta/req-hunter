@@ -32,6 +32,7 @@ def _build_scraper(source: Source) -> GenericScraper | WorkdayScraper:
         base_url=source.base_url,
         keyword=source.keyword,
         query_param=source.query_param,
+        url_path_filter=source.url_path_filter,
     )
 
 

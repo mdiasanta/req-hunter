@@ -14,6 +14,7 @@ class SourceBase(BaseModel):
     base_url: str
     keyword: str
     query_param: str = "q"
+    url_path_filter: str | None = None
 
 
 class SourceCreate(SourceBase):
@@ -27,6 +28,7 @@ class SourceUpdate(BaseModel):
     base_url: str | None = None
     keyword: str | None = None
     query_param: str | None = None
+    url_path_filter: str | None = None
     is_active: bool | None = None
 
 
