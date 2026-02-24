@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>req-hunter</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0f1117;
+      --surface:     #1a1d27;
+      --surface2:    #252836;
+      --border:      #2d3145;
+      --text:        #e2e8f0;
+      --muted:       #64748b;
+      --accent:      #6366f1;
+      --accent-hov:  #818cf8;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      height: 52px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+    }
+
+    .tabs { display: flex; gap: 2px; }
+
+    .tab {
+      background: none;
+      border: none;
+      color: var(--muted);
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.15s;
+    }
+    .tab:hover          { background: var(--surface2); color: var(--text); }
+    .tab.active         { background: var(--surface2); color: var(--text); font-weight: 500; }
+
+    .header-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #scrape-status { font-size: 12px; color: var(--muted); }
+
+    /* ── Buttons ─────────────────────────────────────────────────────── */
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .btn:hover              { background: var(--accent-hov); }
+    .btn:disabled           { opacity: 0.45; cursor: not-allowed; }
+    .btn.secondary          { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn.secondary:hover    { background: var(--border); }
+    .btn.danger             { background: #7f1d1d; color: #fca5a5; border: 1px solid #991b1b; }
+    .btn.danger:hover       { background: #991b1b; }
+    .btn.sm                 { padding: 4px 10px; font-size: 12px; }
+
+    /* ── Layout ──────────────────────────────────────────────────────── */
+    main { padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
+
+    /* ── Status filter pills ─────────────────────────────────────────── */
+    .filters {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .pill {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 4px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+    .pill:hover        { border-color: var(--accent); color: var(--text); }
+    .pill.active       { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .pill .n           { opacity: 0.75; margin-left: 3px; }
+
+    /* ── Table shared ────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    th {
+      text-align: left;
+      padding: 9px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tr:last-child td        { border-bottom: none; }
+    tbody tr:hover td       { background: rgba(255,255,255,0.018); }
+
+    .col-title a {
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .col-title a:hover { color: var(--accent-hov); text-decoration: underline; }
+
+    .muted  { color: var(--muted); }
+    .small  { font-size: 12px; }
+
+    /* ── Status badge ────────────────────────────────────────────────── */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+    .s-new      { background: rgba(59,130,246,.15);  color: #60a5fa; }
+    .s-seen     { background: rgba(168,85,247,.15);  color: #c084fc; }
+    .s-applied  { background: rgba(34,197,94,.15);   color: #4ade80; }
+    .s-rejected { background: rgba(239,68,68,.15);   color: #f87171; }
+    .s-ignored  { background: rgba(107,114,128,.15); color: #9ca3af; }
+
+    /* ── Status select ───────────────────────────────────────────────── */
+    .s-select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .s-select:focus { outline: none; border-color: var(--accent); }
+
+    /* ── Pagination ──────────────────────────────────────────────────── */
+    .pager {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 16px;
+      border-top: 1px solid var(--border);
+    }
+    .pager-info { font-size: 12px; color: var(--muted); }
+    .pager-btns { display: flex; gap: 8px; }
+
+    /* ── Sources ─────────────────────────────────────────────────────── */
+    .sources-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .sources-top h2 { font-size: 15px; font-weight: 600; }
+
+    .url-cell {
+      max-width: 260px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: block;
+    }
+
+    /* ── Toggle switch ───────────────────────────────────────────────── */
+    .toggle { position: relative; width: 34px; height: 18px; display: inline-block; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .track {
+      position: absolute; inset: 0;
+      background: var(--border);
+      border-radius: 18px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .track::after {
+      content: '';
+      position: absolute;
+      left: 3px; top: 3px;
+      width: 12px; height: 12px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform .2s;
+    }
+    .toggle input:checked + .track              { background: var(--accent); }
+    .toggle input:checked + .track::after       { transform: translateX(16px); }
+
+    /* ── Add source form ─────────────────────────────────────────────── */
+    .add-form {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin-top: 18px;
+    }
+    .add-form h3 { font-size: 13px; font-weight: 600; margin-bottom: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+
+    .form-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+
+    .fg { display: flex; flex-direction: column; gap: 5px; }
+    .fg label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    .fg input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 11px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    .fg input:focus { outline: none; border-color: var(--accent); }
+    .fg input.w-sm  { width: 80px; }
+    .fg input.w-md  { width: 180px; }
+    .fg input.w-lg  { width: 320px; }
+
+    /* ── Empty / loading ─────────────────────────────────────────────── */
+    .empty {
+      text-align: center;
+      padding: 56px 24px;
+      color: var(--muted);
+    }
+    .empty strong { display: block; color: var(--text); margin-bottom: 6px; }
+
+    /* ── Toast ───────────────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 20px; right: 20px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 9px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      max-width: 340px;
+      animation: fadein .2s ease;
+    }
+    .toast.ok  { border-color: #16a34a; }
+    .toast.err { border-color: #dc2626; color: #f87171; }
+    @keyframes fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">req-hunter</span>
+  <nav class="tabs">
+    <button class="tab active" data-tab="jobs">Jobs</button>
+    <button class="tab"        data-tab="sources">Sources</button>
+  </nav>
+  <div class="header-right">
+    <span id="scrape-status"></span>
+    <button class="btn" id="run-all-btn">&#9654; Run All Scrapes</button>
+  </div>
+</header>
+
+<main>
+  <!-- ── Jobs view ───────────────────────────────────────────────────── -->
+  <div id="jobs-view">
+    <div class="filters" id="filters">
+      <button class="pill active" data-status="">All</button>
+      <button class="pill" data-status="new">New</button>
+      <button class="pill" data-status="seen">Seen</button>
+      <button class="pill" data-status="applied">Applied</button>
+      <button class="pill" data-status="rejected">Rejected</button>
+      <button class="pill" data-status="ignored">Ignored</button>
+    </div>
+    <div id="jobs-out"></div>
+  </div>
+
+  <!-- ── Sources view ────────────────────────────────────────────────── -->
+  <div id="sources-view" hidden>
+    <div class="sources-top">
+      <h2>Scrape Sources</h2>
+    </div>
+    <div id="sources-out"></div>
+
+    <div class="add-form">
+      <h3>Add Source</h3>
+      <div class="form-row">
+        <div class="fg">
+          <label>Name</label>
+          <input id="f-name" class="w-md" type="text" placeholder="Acme Corp">
+        </div>
+        <div class="fg">
+          <label>Base URL</label>
+          <input id="f-url" class="w-lg" type="url" placeholder="https://careers.example.com/jobs">
+        </div>
+        <div class="fg">
+          <label>Keyword</label>
+          <input id="f-keyword" class="w-md" type="text" placeholder="software engineer">
+        </div>
+        <div class="fg">
+          <label>Query Param</label>
+          <input id="f-param" class="w-sm" type="text" value="q" placeholder="q">
+        </div>
+        <button class="btn" id="add-btn">Add</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+  const API      = '/api/v1';
+  const PER_PAGE = 50;
+
+  const state = {
+    tab:    'jobs',
+    filter: '',
+    page:   0,
+    total:  0,
+  };
+
+  // ── API ──────────────────────────────────────────────────────────────────
+  async function api(path, opts = {}) {
+    const res = await fetch(API + path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => res.statusText);
+      throw new Error(text || res.statusText);
+    }
+    if (res.status === 204) return null;
+    return res.json();
+  }
+
+  // ── Toast ────────────────────────────────────────────────────────────────
+  function toast(msg, type = '') {
+    const el = document.createElement('div');
+    el.className = 'toast' + (type ? ' ' + type : '');
+    el.textContent = msg;
+    document.getElementById('toast').appendChild(el);
+    setTimeout(() => el.remove(), 3800);
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function esc(v) {
+    return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  const STATUSES = ['new', 'seen', 'applied', 'rejected', 'ignored'];
+
+  function badge(s)  { return `<span class="badge s-${s}">${s}</span>`; }
+
+  function sSelect(id, cur) {
+    return '<select class="s-select" data-id="' + id + '">'
+      + STATUSES.map(s => `<option${s===cur?' selected':''}>${s}</option>`).join('')
+      + '</select>';
+  }
+
+  // ── Jobs ─────────────────────────────────────────────────────────────────
+  async function loadJobs() {
+    const qs = new URLSearchParams({ limit: PER_PAGE, offset: state.page * PER_PAGE });
+    if (state.filter) qs.set('status', state.filter);
+    try {
+      const data = await api('/jobs/?' + qs);
+      state.total = data.total;
+      renderJobs(data.items);
+    } catch (e) {
+      toast('Failed to load jobs: ' + e.message, 'err');
+    }
+  }
+
+  function renderJobs(jobs) {
+    const out = document.getElementById('jobs-out');
+    if (!jobs.length) {
+      out.innerHTML = '<div class="card"><div class="empty"><strong>No jobs found</strong>Add a source and run a scrape to get started.</div></div>';
+      return;
+    }
+
+    const rows = jobs.map(j => `
+      <tr>
+        <td class="col-title"><a href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a></td>
+        <td>${esc(j.company)}</td>
+        <td class="muted">${j.location ? esc(j.location) : '—'}</td>
+        <td class="muted small">${esc(j.source)}</td>
+        <td class="muted small">${fmtDate(j.scraped_at)}</td>
+        <td>${badge(j.status)}</td>
+        <td>${sSelect(j.id, j.status)}</td>
+      </tr>`).join('');
+
+    const start = state.page * PER_PAGE + 1;
+    const end   = Math.min(start + jobs.length - 1, state.total);
+
+    out.innerHTML = `
+      <div class="card">
+        <table>
+          <thead><tr>
+            <th>Title</th><th>Company</th><th>Location</th>
+            <th>Source</th><th>Scraped</th><th>Status</th><th>Change</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="pager">
+          <span class="pager-info">${start}–${end} of ${state.total}</span>
+          <div class="pager-btns">
+            <button class="btn secondary sm" id="pg-prev" ${state.page===0?'disabled':''}>&#8592; Prev</button>
+            <button class="btn secondary sm" id="pg-next" ${end>=state.total?'disabled':''}>Next &#8594;</button>
+          </div>
+        </div>
+      </div>`;
+
+    out.querySelector('#pg-prev')?.addEventListener('click', () => { state.page--; loadJobs(); });
+    out.querySelector('#pg-next')?.addEventListener('click', () => { state.page++; loadJobs(); });
+
+    out.querySelectorAll('.s-select').forEach(sel => {
+      sel.addEventListener('change', async e => {
+        const id     = e.target.dataset.id;
+        const status = e.target.value;
+        try {
+          await api('/jobs/' + id, { method: 'PATCH', body: JSON.stringify({ status }) });
+          const b = e.target.closest('tr').querySelector('.badge');
+          b.className = 'badge s-' + status;
+          b.textContent = status;
+          toast('Marked as ' + status, 'ok');
+        } catch (err) {
+          toast('Update failed', 'err');
+        }
+      });
+    });
+  }
+
+  // Status filter pills
+  document.getElementById('filters').addEventListener('click', e => {
+    const pill = e.target.closest('.pill');
+    if (!pill) return;
+    document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    state.filter = pill.dataset.status;
+    state.page   = 0;
+    loadJobs();
+  });
+
+  // ── Sources ──────────────────────────────────────────────────────────────
+  async function loadSources() {
+    try {
+      const data = await api('/sources/');
+      renderSources(data.items);
+    } catch (e) {
+      toast('Failed to load sources: ' + e.message, 'err');
+    }
+  }
+
+  function renderSources(sources) {
+    const out = document.getElementById('sources-out');
+    if (!sources.length) {
+      out.innerHTML = '<div class="card"><div class="empty"><strong>No sources yet</strong>Add one below to start scraping.</div></div>';
+      return;
+    }
+
+    const rows = sources.map(s => `
+      <tr data-sid="${s.id}">
+        <td><strong>${esc(s.name)}</strong></td>
+        <td class="muted small">${esc(s.keyword)}</td>
+        <td class="small"><a class="url-cell muted" href="${esc(s.base_url)}" target="_blank" title="${esc(s.base_url)}">${esc(s.base_url)}</a></td>
+        <td class="muted small">${fmtDate(s.last_scraped_at)}</td>
+        <td>
+          <label class="toggle">
+            <input type="checkbox" class="act-toggle" data-sid="${s.id}" ${s.is_active?'checked':''}>
+            <span class="track"></span>
+          </label>
+        </td>
+        <td>
+          <div style="display:flex;gap:6px">
+            <button class="btn sm run-btn"    data-sid="${s.id}">&#9654; Run</button>
+            <button class="btn sm danger del-btn" data-sid="${s.id}">Delete</button>
+          </div>
+        </td>
+      </tr>`).join('');
+
+    out.innerHTML = `
+      <div class="card">
+        <table>
+          <thead><tr>
+            <th>Name</th><th>Keyword</th><th>URL</th>
+            <th>Last Scraped</th><th>Active</th><th>Actions</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+
+    out.querySelectorAll('.act-toggle').forEach(t => {
+      t.addEventListener('change', async e => {
+        const sid       = e.target.dataset.sid;
+        const is_active = e.target.checked;
+        try {
+          await api('/sources/' + sid, { method: 'PATCH', body: JSON.stringify({ is_active }) });
+          toast(is_active ? 'Source activated' : 'Source paused', 'ok');
+        } catch (err) {
+          toast('Failed to update source', 'err');
+          e.target.checked = !is_active;
+        }
+      });
+    });
+
+    out.querySelectorAll('.run-btn').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        const sid = e.target.dataset.sid;
+        await runScrape('/scrape/run/' + sid, e.target);
+        loadSources();
+      });
+    });
+
+    out.querySelectorAll('.del-btn').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        const sid  = e.target.dataset.sid;
+        const row  = e.target.closest('tr');
+        const name = row.querySelector('strong').textContent;
+        if (!confirm(`Delete "${name}"?`)) return;
+        try {
+          await api('/sources/' + sid, { method: 'DELETE' });
+          toast('Source deleted', 'ok');
+          loadSources();
+        } catch (err) {
+          toast('Delete failed', 'err');
+        }
+      });
+    });
+  }
+
+  // Add source form
+  document.getElementById('add-btn').addEventListener('click', async () => {
+    const name        = document.getElementById('f-name').value.trim();
+    const base_url    = document.getElementById('f-url').value.trim();
+    const keyword     = document.getElementById('f-keyword').value.trim();
+    const query_param = document.getElementById('f-param').value.trim() || 'q';
+
+    if (!name || !base_url || !keyword) {
+      toast('Name, URL, and keyword are required', 'err');
+      return;
+    }
+    try {
+      await api('/sources/', { method: 'POST', body: JSON.stringify({ name, base_url, keyword, query_param }) });
+      toast('Source added', 'ok');
+      ['f-name','f-url','f-keyword'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('f-param').value = 'q';
+      loadSources();
+    } catch (err) {
+      toast('Failed to add source: ' + err.message, 'err');
+    }
+  });
+
+  // ── Scrape runner ────────────────────────────────────────────────────────
+  async function runScrape(path, triggerBtn) {
+    const runAllBtn  = document.getElementById('run-all-btn');
+    const statusEl   = document.getElementById('scrape-status');
+    runAllBtn.disabled = true;
+    if (triggerBtn) triggerBtn.disabled = true;
+    statusEl.textContent = 'Scraping…';
+
+    try {
+      const r = await api(path, { method: 'POST' });
+      statusEl.textContent = '';
+      const msg = `${r.jobs_new} new job${r.jobs_new!==1?'s':''} across ${r.sources_processed} source${r.sources_processed!==1?'s':''}`;
+      toast(msg, 'ok');
+      r.errors.forEach(e => toast(e, 'err'));
+      if (state.tab === 'jobs') loadJobs();
+    } catch (err) {
+      statusEl.textContent = '';
+      toast('Scrape failed: ' + err.message, 'err');
+    } finally {
+      runAllBtn.disabled = false;
+      if (triggerBtn) triggerBtn.disabled = false;
+    }
+  }
+
+  document.getElementById('run-all-btn').addEventListener('click', async () => {
+    await runScrape('/scrape/run');
+    if (state.tab === 'sources') loadSources();
+  });
+
+  // ── Tab switching ────────────────────────────────────────────────────────
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      state.tab = tab.dataset.tab;
+      document.getElementById('jobs-view').hidden    = state.tab !== 'jobs';
+      document.getElementById('sources-view').hidden = state.tab !== 'sources';
+      if (state.tab === 'sources') loadSources();
+    });
+  });
+
+  // ── Init ─────────────────────────────────────────────────────────────────
+  loadJobs();
+</script>
+</body>
+</html>

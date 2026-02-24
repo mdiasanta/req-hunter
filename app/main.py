@@ -2,12 +2,17 @@
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.routers import jobs, scrape, sources
+
+_STATIC_DIR = Path(__file__).parent / "static"
 
 
 @asynccontextmanager
@@ -43,3 +48,11 @@ app.include_router(scrape.router, prefix="/api/v1")
 async def health_check() -> dict[str, str]:
     """Liveness probe."""
     return {"status": "ok", "env": settings.app_env}
+
+
+@app.get("/")
+async def root() -> RedirectResponse:
+    return RedirectResponse(url="/ui/")
+
+
+app.mount("/ui", StaticFiles(directory=_STATIC_DIR, html=True), name="ui")

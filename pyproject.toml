@@ -14,6 +14,7 @@ dependencies = [
     # Web framework
     "fastapi[standard]>=0.115.0,<0.116.0",
     "uvicorn[standard]>=0.32.0,<0.33.0",
+    "aiofiles>=24.0.0,<25.0.0",
 
     # Database (async)
     "sqlalchemy[asyncio]>=2.0.36,<2.1.0",
