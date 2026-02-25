@@ -52,8 +52,16 @@ async def update_source(
     source = await db.get(Source, source_id)
     if not source:
         raise HTTPException(status_code=404, detail="Source not found")
-    for field, value in payload.model_dump(exclude_none=True).items():
+    data = payload.model_dump(exclude_none=True)
+    clear_blocked = bool(data.pop("clear_blocked", False))
+    for field, value in data.items():
         setattr(source, field, value)
+    if clear_blocked:
+        source.is_blocked = False
+        source.blocked_reason = None
+        source.blocked_at = None
+        source.last_error = None
+        source.is_active = True
     await db.flush()
     await db.refresh(source)
     return source

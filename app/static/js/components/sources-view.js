@@ -207,6 +207,12 @@ class SourcesView extends HTMLElement {
           <a class="url-cell muted" href="${esc(s.base_url)}" target="_blank" title="${esc(s.base_url)}">${esc(s.base_url)}</a>
           ${s.url_path_filter ? `<span class="muted" style="font-size:11px">filter: ${esc(s.url_path_filter)}</span>` : ''}
         </td>
+        <td class="small">
+          ${s.is_blocked
+            ? `<span class="badge s-rejected">blocked</span>${s.blocked_reason ? `<div class="muted small" title="${esc(s.blocked_reason)}">${esc(s.blocked_reason)}</div>` : ''}`
+            : `<span class="badge ${s.is_active ? 's-applied' : 's-ignored'}">${s.is_active ? 'active' : 'paused'}</span>`
+          }
+        </td>
         <td class="muted small">${fmtDate(s.last_scraped_at)}</td>
         <td>
           <label class="toggle">
@@ -217,7 +223,8 @@ class SourcesView extends HTMLElement {
         <td>
           <div style="display:flex;gap:6px">
             <button class="btn sm secondary edit-btn" data-sid="${s.id}">Edit</button>
-            <button class="btn sm run-btn" data-sid="${s.id}">&#9654; Run</button>
+            <button class="btn sm run-btn" data-sid="${s.id}" ${s.is_blocked ? 'disabled' : ''}>&#9654; Run</button>
+            ${s.is_blocked ? `<button class="btn sm secondary unblock-btn" data-sid="${s.id}">Unblock</button>` : ''}
             <button class="btn sm danger del-btn" data-sid="${s.id}">Delete</button>
           </div>
         </td>
@@ -229,7 +236,7 @@ class SourcesView extends HTMLElement {
         <table>
           <thead><tr>
             <th>Name</th><th>Keyword</th><th>URL</th>
-            <th>Last Scraped</th><th>Active</th><th>Actions</th>
+            <th>Status</th><th>Last Scraped</th><th>Active</th><th>Actions</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -249,6 +256,22 @@ class SourcesView extends HTMLElement {
         } catch (_err) {
           toast('Failed to update source', 'err');
           e.target.checked = !is_active;
+        }
+      });
+    });
+
+    out.querySelectorAll('.unblock-btn').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        const sid = e.target.dataset.sid;
+        try {
+          await api('/sources/' + sid, {
+            method: 'PATCH',
+            body: JSON.stringify({ clear_blocked: true }),
+          });
+          toast('Source unblocked', 'ok');
+          await this.refresh();
+        } catch (_err) {
+          toast('Failed to unblock source', 'err');
         }
       });
     });

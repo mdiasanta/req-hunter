@@ -30,6 +30,7 @@ class SourceUpdate(BaseModel):
     query_param: str | None = None
     url_path_filter: str | None = None
     is_active: bool | None = None
+    clear_blocked: bool | None = None
 
 
 class SourceRead(SourceBase):
@@ -37,6 +38,10 @@ class SourceRead(SourceBase):
 
     id: int
     is_active: bool
+    is_blocked: bool
+    blocked_reason: str | None
+    blocked_at: datetime | None
+    last_error: str | None
     last_scraped_at: datetime | None
     created_at: datetime
 

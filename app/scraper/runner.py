@@ -19,6 +19,16 @@ from app.scraper.workday import WorkdayScraper
 logger = logging.getLogger(__name__)
 
 
+def _is_antibot_error(message: str) -> bool:
+    msg = message.lower()
+    return (
+        "anti-bot challenge" in msg
+        or "cloudflare" in msg
+        or "captcha" in msg
+        or "verify you are human" in msg
+    )
+
+
 def _is_workday(url: str) -> bool:
     return "myworkdayjobs.com" in url.lower()
 
@@ -76,11 +86,27 @@ async def run_source(
             jobs = await scraper.scrape()
         jobs_found = len(jobs)
         jobs_new = await _save_new_jobs(jobs, db)
+        source.is_blocked = False
+        source.blocked_reason = None
+        source.blocked_at = None
+        source.last_error = None
         source.last_scraped_at = datetime.now(timezone.utc)
         await db.flush()
     except Exception as exc:
         logger.exception("Scrape failed for source '%s' (%s)", source.name, source.base_url)
-        errors.append(f"[{source.name}] {exc}")
+        err_text = str(exc)
+        source.last_error = err_text[:4000]
+        if _is_antibot_error(err_text):
+            source.is_blocked = True
+            source.blocked_reason = err_text[:4000]
+            source.blocked_at = datetime.now(timezone.utc)
+            source.is_active = False
+            errors.append(
+                f"[{source.name}] {exc} (source auto-paused as blocked; use Unblock in Sources UI)"
+            )
+        else:
+            errors.append(f"[{source.name}] {exc}")
+        await db.flush()
 
     return jobs_found, jobs_new, errors
 

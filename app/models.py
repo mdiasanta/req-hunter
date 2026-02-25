@@ -57,6 +57,10 @@ class Source(Base):
     query_param: Mapped[str] = mapped_column(String(64), default="q", nullable=False)
     url_path_filter: Mapped[str | None] = mapped_column(String(256), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_blocked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    blocked_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    blocked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_scraped_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
