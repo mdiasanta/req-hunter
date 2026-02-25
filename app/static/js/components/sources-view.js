@@ -10,6 +10,24 @@ class SourcesView extends HTMLElement {
 
   connectedCallback() {
     this.innerHTML = `
+      <div class="card schedule-card">
+        <div class="schedule-row">
+          <div class="schedule-field">
+            <label>Auto Run</label>
+            <label class="toggle">
+              <input type="checkbox" id="sch-enabled">
+              <span class="track"></span>
+            </label>
+          </div>
+          <div class="schedule-field">
+            <label>Interval (minutes)</label>
+            <input id="sch-interval" class="w-sm" type="number" min="5" value="60">
+          </div>
+          <button class="btn secondary" id="save-schedule-btn">Save Schedule</button>
+          <div class="schedule-meta muted small" id="schedule-meta">Not configured</div>
+        </div>
+      </div>
+
       <div class="sources-top">
         <h2>Scrape Sources</h2>
       </div>
@@ -46,6 +64,7 @@ class SourcesView extends HTMLElement {
 
     this.querySelector('#save-source-btn').addEventListener('click', () => this.saveSource());
     this.querySelector('#cancel-edit-btn').addEventListener('click', () => this.endEditSource());
+    this.querySelector('#save-schedule-btn').addEventListener('click', () => this.saveSchedule());
   }
 
   setSourceFormMode() {
@@ -128,6 +147,49 @@ class SourcesView extends HTMLElement {
     } catch (e) {
       toast('Failed to load sources: ' + e.message, 'err');
     }
+
+    try {
+      await this.loadSchedule();
+    } catch (e) {
+      toast('Failed to load schedule: ' + e.message, 'err');
+    }
+  }
+
+  async loadSchedule() {
+    const sch = await api('/schedule/');
+    this.querySelector('#sch-enabled').checked = sch.is_enabled;
+    this.querySelector('#sch-interval').value = String(sch.interval_minutes);
+    this.querySelector('#schedule-meta').textContent =
+      `Last run: ${this.fmtDateTime(sch.last_run_at)} | Next run: ${this.fmtDateTime(sch.next_run_at)}`;
+  }
+
+  async saveSchedule() {
+    const is_enabled = this.querySelector('#sch-enabled').checked;
+    const raw = Number(this.querySelector('#sch-interval').value || 60);
+    const interval_minutes = Math.max(5, raw);
+    this.querySelector('#sch-interval').value = String(interval_minutes);
+    try {
+      const updated = await api('/schedule/', {
+        method: 'PATCH',
+        body: JSON.stringify({ is_enabled, interval_minutes }),
+      });
+      this.querySelector('#schedule-meta').textContent =
+        `Last run: ${this.fmtDateTime(updated.last_run_at)} | Next run: ${this.fmtDateTime(updated.next_run_at)}`;
+      toast('Schedule updated', 'ok');
+    } catch (err) {
+      toast('Failed to update schedule: ' + err.message, 'err');
+    }
+  }
+
+  fmtDateTime(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
   }
 
   renderSources(sources) {

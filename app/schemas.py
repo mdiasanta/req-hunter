@@ -48,6 +48,22 @@ class SourceListResponse(BaseModel):
     items: list[SourceRead]
 
 
+class ScheduleRead(BaseModel):
+    id: int
+    is_enabled: bool
+    interval_minutes: int
+    last_run_at: datetime | None
+    next_run_at: datetime | None
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ScheduleUpdate(BaseModel):
+    is_enabled: bool | None = None
+    interval_minutes: int | None = None
+
+
 # ── Scrape result schema ───────────────────────────────────────────────────────
 
 class ScrapeResult(BaseModel):

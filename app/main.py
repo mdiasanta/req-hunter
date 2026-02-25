@@ -13,7 +13,8 @@ from starlette.responses import JSONResponse
 
 from app.config import settings
 from app.logging_utils import configure_logging
-from app.routers import jobs, logs, scrape, sources
+from app.routers import jobs, logs, schedule, scrape, sources
+from app.scheduler import scrape_scheduler
 
 _STATIC_DIR = Path(__file__).parent / "static"
 logger = logging.getLogger(__name__)
@@ -23,9 +24,11 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     configure_logging()
     logger.info("Starting req-hunter in %s mode", settings.app_env)
+    await scrape_scheduler.start()
     yield
     from app.database import engine
 
+    await scrape_scheduler.stop()
     logger.info("Shutting down req-hunter")
     await engine.dispose()
 
@@ -49,6 +52,7 @@ app.include_router(jobs.router, prefix="/api/v1")
 app.include_router(sources.router, prefix="/api/v1")
 app.include_router(scrape.router, prefix="/api/v1")
 app.include_router(logs.router, prefix="/api/v1")
+app.include_router(schedule.router, prefix="/api/v1")
 
 
 @app.exception_handler(Exception)

@@ -203,6 +203,46 @@ tbody tr:hover td { background: rgba(255,255,255,0.018); }
 
 .sources-top h2 { font-size: 15px; font-weight: 600; }
 
+.schedule-card {
+  margin-bottom: 14px;
+  padding: 14px 16px;
+}
+
+.schedule-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.schedule-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.schedule-field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.schedule-field input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px 11px;
+  border-radius: 6px;
+  font-size: 13px;
+  width: 90px;
+}
+
+.schedule-meta {
+  margin-left: auto;
+}
+
 .url-cell {
   max-width: 260px;
   overflow: hidden;
@@ -374,5 +414,10 @@ tbody tr:hover td { background: rgba(255,255,255,0.018); }
   .fg input.w-md,
   .fg input.w-sm {
     width: min(100%, 320px);
+  }
+
+  .schedule-meta {
+    margin-left: 0;
+    width: 100%;
   }
 }
