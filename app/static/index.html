@@ -1,32 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>req-hunter</title>
   <link rel="stylesheet" href="/ui/css/app.css">
+  <link rel="icon" type="image/x-icon" href="req-hunter-favicon.ico">
 </head>
+
 <body>
-<header>
-  <span class="logo">req-hunter</span>
-  <nav class="tabs">
-    <button class="tab active" data-tab="jobs">Jobs</button>
-    <button class="tab" data-tab="sources">Sources</button>
-    <button class="tab" data-tab="logs">Logs</button>
-  </nav>
-  <div class="header-right">
-    <span id="scrape-status"></span>
-    <button class="btn" id="run-all-btn">&#9654; Run All Scrapes</button>
-  </div>
-</header>
+  <header>
+    <span class="logo">req-hunter</span>
+    <nav class="tabs">
+      <button class="tab active" data-tab="jobs">Jobs</button>
+      <button class="tab" data-tab="sources">Sources</button>
+      <button class="tab" data-tab="logs">Logs</button>
+    </nav>
+    <div class="header-right">
+      <span id="scrape-status"></span>
+      <button class="btn" id="run-all-btn">&#9654; Run All Scrapes</button>
+    </div>
+  </header>
 
-<main>
-  <jobs-view id="jobs-view"></jobs-view>
-  <sources-view id="sources-view" hidden></sources-view>
-  <logs-view id="logs-view" hidden></logs-view>
-</main>
+  <main>
+    <jobs-view id="jobs-view"></jobs-view>
+    <sources-view id="sources-view" hidden></sources-view>
+    <logs-view id="logs-view" hidden></logs-view>
+  </main>
 
-<div id="toast"></div>
-<script type="module" src="/ui/js/main.js"></script>
+  <div id="toast"></div>
+  <script type="module" src="/ui/js/main.js"></script>
 </body>
+
 </html>
