@@ -6,6 +6,7 @@ The dispatcher inspects each source URL and routes it to the right scraper:
 """
 
 from datetime import datetime, timezone
+import logging
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +15,8 @@ from app.models import Job, JobStatus, Source
 from app.schemas import JobCreate, ScrapeResult
 from app.scraper.generic import GenericScraper
 from app.scraper.workday import WorkdayScraper
+
+logger = logging.getLogger(__name__)
 
 
 def _is_workday(url: str) -> bool:
@@ -76,6 +79,7 @@ async def run_source(
         source.last_scraped_at = datetime.now(timezone.utc)
         await db.flush()
     except Exception as exc:
+        logger.exception("Scrape failed for source '%s' (%s)", source.name, source.base_url)
         errors.append(f"[{source.name}] {exc}")
 
     return jobs_found, jobs_new, errors

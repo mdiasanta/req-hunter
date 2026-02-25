@@ -26,5 +26,11 @@ class Settings(BaseSettings):
     scraper_timeout_seconds: int = 30
     scraper_delay_seconds: int = 2
 
+    # Logging
+    log_file_path: str = "logs/req-hunter.log"
+    log_level: str = "INFO"
+    log_max_bytes: int = 1_048_576
+    log_backup_count: int = 3
+
 
 settings = Settings()
